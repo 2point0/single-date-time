@@ -1,0 +1,241 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="../iron-list/iron-list.html">
+
+<link rel="import" href="single-date-month.html">
+
+<link rel="import" href="single-date-time-style.html">
+
+<dom-module id="single-date-time">
+  <template>
+    <style include="single-date-time-style"></style>
+
+    <iron-list id="monthList" items="[[_monthData]]" hidden$="[[showYear]]">
+      <template>
+        <single-date-month second="[[item.second]]"
+                           second-select="[[secondSelect]]"
+                           on-year-press="_onYearPress"
+                           on-date-select="_onDateSelect"></single-date-month>
+      </template>
+    </iron-list>
+
+    <iron-list id="yearList" items="[[_yearData]]" hidden$="[[!showYear]]">
+      <template>
+        <p on-tap="_onSelectYear" selected$="[[_isYearSelected(item)]]"><span class="text-content">[[item]]</span></p>
+      </template>
+    </iron-list>
+  </template>
+
+  <script src="../moment/min/moment-with-locales.min.js"></script>
+
+  <script>
+    Polymer({
+      is: 'single-date-time',
+      properties: {
+        /**
+         * The milliseconds (since epoch) of the date to center on.
+         *
+         * Setting this will refresh the UI and set selected.
+         *
+         * @default now
+         */
+        millis: {
+          type: Number,
+          value: function () {
+            return new Date().getTime();
+          },
+          observer: '_millisChange'
+        },
+
+        /**
+         * Last selected day (in seconds since epoch).
+         *
+         * The time part of this value is insignificant.
+         */
+        secondSelect: {
+          type: Number,
+          value: 0,
+          readOnly: true,
+          observer: '_secondSelectChange'
+        }
+      },
+
+      // Selected year
+      _yearSelect: 0,
+
+      // List data
+      _monthData: null,
+
+      // List data
+      _yearData: null,
+
+      /**
+       * A computed method for determining if a year item is selected.
+       *
+       * @return {boolean} TRUE if the specified year is equal to the selected year or FALSE otherwise.
+       */
+      _isYearSelected: function (year) {
+        return parseInt(year) === this._yearSelect;
+      },
+
+      attached: function () {
+        this.isAttached = true;
+        this._populateMonthList(this.millis);
+        this._wireScrollUpdate();
+      },
+
+      /**
+       * @return {number} the seconds since epoch of the last selected day
+       */
+      getSelectedSecond: function () {
+        return this.secondSelect;
+      },
+
+      /**
+       * Wires month and year lists to populate more data as scrolling reaches its data boundaries
+       */
+      _wireScrollUpdate: function () {
+        /**
+         *
+         * @param {HTMLElement} list &lt;iron-list&gt;
+         * @param {{prePopulate: function():number, postPopulate: function()}} populator
+         */
+        var wireScrollUpdate = function (list, populator) {
+          list.addEventListener('scroll', function (e) {
+            var scrollHeight = list.scrollHeight
+            if (scrollHeight) {
+              var deltaTop = list._scrollPosition,
+                  pageHeight = list.clientHeight,
+                  scrollTop = pageHeight + deltaTop,
+                  deltaBottom = scrollHeight - scrollTop
+              if (deltaTop < pageHeight) {
+                var populateCount = populator.prePopulate();
+                // Reset position for predictable scrolling
+                list.scrollToIndex(populateCount);
+              } else if (deltaBottom < pageHeight) {
+                populator.postPopulate();
+              }
+            }
+          });
+        };
+
+        wireScrollUpdate(this.$.monthList, {
+          prePopulate: function () {
+            var count = 6;
+            for (var i = 0; i < count; i++) {
+              // This is pre-decrement
+              this.unshift('_monthData', {second: this.firstMoment.subtract(1, 'month').unix()});
+            }
+            return count;
+          }.bind(this),
+          postPopulate: function () {
+            for (var i = 0; i < 2; i++) {
+              // This is pre-increment
+              this.push('_monthData', {second: this.lastMoment.add(1, 'month').unix()});
+            }
+          }.bind(this)
+        });
+
+        var count = 10;
+        wireScrollUpdate(this.$.yearList, {
+          prePopulate: function () {
+            for (var i = 0; i < count; i++) {
+              this.unshift('_yearData', --this.firstYear);
+            }
+            return count;
+          }.bind(this),
+          postPopulate: function () {
+            for (var i = 0; i < count; i++) {
+              this.push('_yearData', ++this.lastYear);
+            }
+          }.bind(this)
+        });
+      },
+
+      // Observer method updating the selected year based on the selected second
+      _secondSelectChange: function (newValue) {
+        this._yearSelect = moment.unix(newValue).year();
+      },
+
+      // Observer method refreshing the UI and underlying data based on the set millis
+      _millisChange: function (newValue) {
+        if (!newValue) {
+          return;
+        }
+
+        // Populate will fail if list is not yet attached
+        if (this.isAttached) {
+          this._populateMonthList(newValue);
+        }
+      },
+
+      // Populates and shows the month list centered on the time specified
+      _populateMonthList: function (millis) {
+        var halfSize = 2,
+            m = moment(millis).subtract(halfSize, 'month'),
+            _monthData = [{second: m.unix()}];
+        this.firstMoment = moment(m);
+        for (var i = 0, L = halfSize * 2; i < L; i++) {
+          _monthData.push({second: m.add(1, 'month').unix()});
+        }
+        this.lastMoment = moment(m);
+        this.set('_monthData', _monthData);
+        this.$.monthList.scrollToIndex(halfSize);
+
+        if (!this.secondSelect) {
+          this._setSecondSelect(Math.floor(millis / 1000));
+        }
+      },
+
+      // Reacts to the year press event
+      _onYearPress: function (e, detail) {
+        e.stopPropagation();
+        this.showYearSelect(detail);
+      },
+
+      // Refreshes the UI based on the year selected
+      _onSelectYear: function (e) {
+        var nodes = [e.target, e.target.children[0]],
+            year = 0;
+        nodes.some(function (node) {
+          var text = node.textContent;
+          if (!isNaN(text)) {
+            year = parseInt(text);
+            return true;
+          }
+        });
+        this.showYear = !this.showYear;
+
+        var m = moment.unix(this.secondSelect).year(year);
+        this.millis = m.unix() * 1000;
+      },
+
+      // Shows the year list for selection
+      showYearSelect: function (year) {
+        this._populateYearList(year);
+      },
+
+      // Populates and shows the year list centered on the year specified
+      _populateYearList: function (year) {
+        var halfSize = 20;
+        year -= halfSize;
+        this.firstYear = year;
+        var years = [year++],
+            lastYear = year + 2 * halfSize;
+        for (year; year < lastYear; year++) {
+          years.push(year);
+        }
+        this.lastYear = year - 1;
+        this.showYear = true;
+        this.set('_yearData', years);
+        this.$.yearList.scrollToIndex(halfSize - 1);
+      },
+
+      // Reacts to the date selected
+      _onDateSelect: function (e, detail) {
+        // Do not stop propagation in case ancestor is interested
+        this._setSecondSelect(detail.unixTimestamp);
+      }
+    })
+  </script>
+</dom-module>

@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <script src="../../web-component-tester/browser.js"></script>
+
+  <link rel="import" href="../single-date-time.html">
+</head>
+<body>
+
+<single-date-time></single-date-time>
+
+<script>
+  var el1 = document.querySelector('single-date-time')
+
+  suite('<single-date-time>', function () {
+
+    test('Node name', function () {
+      assert.equal(el1.nodeName.toLowerCase(), 'single-date-time')
+    })
+  })
+</script>
+
+</body>
+</html>

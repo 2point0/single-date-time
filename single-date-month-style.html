@@ -1,0 +1,78 @@
+<dom-module id="single-date-month-style">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+
+      .header-display {
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding: 0 32px;
+        box-sizing: border-box;
+
+        @apply(--header-display-theme);
+      }
+
+      .header-display > .spacer {
+        flex-grow: 1;
+
+        @apply(--header-display-spacer-theme);
+      }
+
+      .month-display {
+        font-size: 24px;
+
+        @apply(--month-display-theme);
+      }
+
+      .year-display {
+        cursor: pointer;
+        font-size: 30px;
+
+        @apply(--year-display-theme);
+      }
+
+      #dayRow td {
+        font-size: 16px;
+        padding: 8px;
+        text-align: center;
+        color: #888;
+
+        @apply(--day-row-theme);
+      }
+
+      tr.week td > p {
+        margin: 0;
+        padding: 0;
+        min-width: 36px;
+        min-height: 36px;
+        font-size: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        cursor: pointer;
+
+        @apply(--day-theme);
+      }
+
+      tr.week td > p:hover {
+        background-color: #eee;
+        border-radius: 18px;
+
+        @apply(--day-hover-theme);
+      }
+
+      tr.week td > p.select {
+        background-color: #333;
+        color: white;
+        border-radius: 18px;
+
+        @apply(--day-select-theme);
+      }
+    </style>
+  </template>
+</dom-module>

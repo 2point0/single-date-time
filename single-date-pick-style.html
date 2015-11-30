@@ -1,0 +1,72 @@
+<dom-module id="single-date-time-style">
+  <template>
+    <style>
+      :host {
+        display: block;
+
+        /* single-date-month theme */
+
+        --year-display-theme: {
+           font-size: var(--year-item-font-size, 30px);
+        };
+
+        --day-hover-theme: {
+           background-color: var(--hover-color, #eee);
+         };
+
+        --day-select-theme: {
+          background-color: var(--select-background-color, #333);
+          color: var(--select-text-color, white);
+        }
+      }
+
+      iron-list {
+        max-height: 256px;
+        max-width: 320px;
+
+        @apply(--iron-list-theme);
+      }
+
+      #yearList p {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        font-size: var(--year-item-font-size, 30px);
+        min-height: 48px;
+        cursor: pointer;
+
+        @apply(--year-item-theme);
+      }
+
+      #yearList p .text-content {
+        padding: 16px;
+
+        @apply(--year-item-text-theme);
+      }
+
+      #yearList p:hover .text-content {
+        background-color: var(--hover-color, #eee);
+        border-radius: var(--year-item-border-radius, 2px);
+
+        @apply(--year-item-text-hover-theme);
+      }
+
+      #yearList p[selected] .text-content {
+        background-color: var(--select-background-color, #333);
+        color: var(--select-text-color, white);
+        border-radius: var(--year-item-border-radius, 2px);
+
+        @apply(--year-item-text-select-theme);
+      }
+
+      single-date-month {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+
+        @apply(--single-date-month-theme);
+      }
+    </style>
+  </template>
+</dom-module>
