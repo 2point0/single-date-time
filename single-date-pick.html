@@ -4,11 +4,11 @@
 
 <link rel="import" href="single-date-month.html">
 
-<link rel="import" href="single-date-time-style.html">
+<link rel="import" href="single-date-pick-style.html">
 
-<dom-module id="single-date-time">
+<dom-module id="single-date-pick">
   <template>
-    <style include="single-date-time-style"></style>
+    <style include="single-date-pick-style"></style>
 
     <iron-list id="monthList" items="[[_monthData]]" hidden$="[[showYear]]">
       <template>
@@ -30,7 +30,7 @@
 
   <script>
     Polymer({
-      is: 'single-date-time',
+      is: 'single-date-pick',
       properties: {
         /**
          * The milliseconds (since epoch) of the date to center on.
@@ -82,13 +82,6 @@
         this.isAttached = true;
         this._populateMonthList(this.millis);
         this._wireScrollUpdate();
-      },
-
-      /**
-       * @return {number} the seconds since epoch of the last selected day
-       */
-      getSelectedSecond: function () {
-        return this.secondSelect;
       },
 
       /**

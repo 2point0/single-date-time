@@ -7,19 +7,19 @@
   <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
   <script src="../../web-component-tester/browser.js"></script>
 
-  <link rel="import" href="../single-date-time.html">
+  <link rel="import" href="../single-date-pick.html">
 </head>
 <body>
 
-<single-date-time></single-date-time>
+<single-date-pick></single-date-pick>
 
 <script>
-  var el1 = document.querySelector('single-date-time')
+  var el1 = document.querySelector('single-date-pick')
 
-  suite('<single-date-time>', function () {
+  suite('<single-date-pick>', function () {
 
     test('Node name', function () {
-      assert.equal(el1.nodeName.toLowerCase(), 'single-date-time')
+      assert.equal(el1.nodeName.toLowerCase(), 'single-date-pick')
     })
   })
 </script>
