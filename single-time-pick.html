@@ -35,12 +35,13 @@
       <paper-button on-tap="_toggleMeridiem" raised hidden$="[[twentyFour]]">[[_timeMeridiem]]</paper-button>
     </p>
 
+    <!--todo Wire up selection change on image mouse/touch drag-->
     <img id="img" on-tap="_onTapClock" on-mousemove="_onMouseMoveClock" on-mouseout="_onMouseOutClock">
   </template>
 
   <script>
     /**
-     * UI for picking hour and minute (time).
+     * Time (hour and minute) picker.
      */
     Polymer({
       is: 'single-time-pick',
@@ -48,8 +49,6 @@
       properties: {
         /**
          * The milliseconds (since epoch) of the time to center on.
-         *
-         * Setting this will refresh the UI and set selected.
          *
          * @default now
          */
@@ -74,7 +73,7 @@
         /**
          * Render properties applied to hour and minute UI selectors.
          *
-         * font.size must be a string of the form '/\d+/px'.
+         * font.size must be a string of the form '/^\\d+px$/'.
          */
         displayProperty: {
           type: Object,
@@ -104,6 +103,7 @@
       // For text display
       _minute: -1,
 
+      // Valid when not 24 hour display, either AM or PM
       _timeMeridiem: '',
 
       behaviors: [SingleTimeDisplaySelectBehavior],
@@ -116,6 +116,13 @@
        */
       _getMinuteDisplay: function (minute) {
         return minute < 10 ? '0' + minute : minute;
+      },
+
+      ready: function () {
+        // Disable image drag
+        this.$.img.ondragstart = function () {
+          return false;
+        };
       },
 
       attached: function () {
@@ -181,7 +188,17 @@
       },
 
       // Reacts to change in millis
-      _millisChange: function () {
+      _millisChange: function (newValue, oldValue) {
+        // Only hours and minutes are significant, other parts can be ignored
+        if (oldValue) {
+          var oldDate = new Date(oldValue),
+              newDate = new Date(newValue);
+          if (oldDate.getMinutes() == newDate.getMinutes() &&
+              oldDate.getHours() == newDate.getHours()) {
+            return;
+          }
+        }
+
         this._updateTextDisplay();
         this._redraw();
       }

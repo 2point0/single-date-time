@@ -1,0 +1,115 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../paper-icon-button/paper-icon-button.html">
+
+<link rel="import" href="single-date-pick.html">
+<link rel="import" href="single-time-pick.html">
+<link rel="import" href="SingleDateTimeBehavior.html">
+
+<dom-module id="single-date-time-toggle">
+  <template>
+    <style>
+      :host {
+        display: block;
+        max-width: var(--picker-max-width, 301px);
+      }
+
+      .date-time-toggle > paper-icon-button {
+        color: #aaa;
+
+        @apply(--date-time-toggle-button-theme);
+      }
+
+      .date-time-toggle > paper-icon-button[selected], .date-time-toggle > paper-icon-button:hover {
+        color: var(--date-time-toggle-select-color, black);
+      }
+
+      .date-container > p {
+        text-align: center;
+        font-size: var(--date-text-font-size, 20px);
+        cursor: pointer;
+
+        @apply(--date-display-theme);
+      }
+    </style>
+
+    <div class="date-time-toggle" hidden$="[[!showToggle]]">
+      <paper-icon-button icon="event" selected$="[[showDate]]" on-tap="_showDate"></paper-icon-button>
+      <paper-icon-button icon="alarm" selected$="[[!showDate]]" on-tap="_showTime"></paper-icon-button>
+    </div>
+
+    <div class="date-container" hidden$="[[!showDate]]">
+      <p on-tap="_focusDate">[[dateText]]</p>
+      <single-date-pick id="datePicker" millis="[[millis]]" on-date-select="_onDateSelect"></single-date-pick>
+    </div>
+
+    <single-time-pick id="timePicker"
+                      millis="[[millis]]"
+                      on-time-select="_onTimeSelect"
+                      twenty-four$="[[twentyFour]]"
+                      hidden$="[[showDate]]"></single-time-pick>
+  </template>
+
+  <script>
+    /**
+     * Date and/or time picker.
+     *
+     * Use when only a single picker should be shown at a time.
+     * Set showToggle to false and lock a single picker in view.
+     */
+    Polymer({
+      is: 'single-date-time-toggle',
+
+      properties: {
+        /**
+         * Shows the toggle when TRUE and hides it otherwise.
+         *
+         * Allows for locking a single picker in view.
+         */
+        showToggle: {
+          type: Boolean,
+          value: false,
+          reflectToAttribute: true
+        },
+
+        /**
+         * Shows the date picker when TRUE and the time picker when false
+         */
+        showDate: {
+          type: Boolean,
+          value: false,
+          reflectToAttribute: true,
+          observer: '_showDateChange'
+        }
+      },
+
+      behaviors: [SingleDateTimeBehavior],
+
+      /**
+       * Observer which force renders the date picker.
+       *
+       * Is necessary when enclosed in &lt;paper-dialog&gt; and time shows by default and date is toggled to.
+       *
+       * todo This is a hack. Fix the problem and clean up code? Can remove observer when fixed.
+       */
+      _showDateChange: function (newValue) {
+        // When time is the default view, toggling to date won't render full when in a dialog, Must force render.
+        if (newValue && !this._isRendered) {
+          this._isRendered = true;
+          this.$.datePicker.forceRender();
+        }
+      },
+
+      // Show the date picker
+      _showDate: function () {
+        this.showDate = true;
+      },
+
+      // Show the time picker
+      _showTime: function () {
+        this.showDate = false;
+      }
+    });
+  </script>
+</dom-module>

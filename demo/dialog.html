@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <title>single-date-time Demo</title>
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="../../paper-button/paper-button.html">
+  <link rel="import" href="../../paper-dialog/paper-dialog.html">
+  <link rel="import" href="../single-date-time.html">
+  <link rel="import" href="../single-date-time-toggle.html">
+  <style>
+    .container {
+      margin: 0 auto;
+      max-width: 1200px;
+      height: 100%;
+    }
+
+    .container > *:not(:first-child) {
+      margin-left: 16px;
+    }
+
+    .explanation {
+      white-space: pre-line;
+      line-height: 1.7;
+    }
+
+    single-date-time-toggle {
+      min-width: 301px;
+    }
+  </style>
+</head>
+<body unresolved>
+<div class="container">
+
+  <template id="t" is="dom-bind">
+    <p class="explanation">This example wires two dialog date-time pickers to a single millis.
+      This is not a production scenario (only a single picker should ever be needed).
+      This setup demonstrates how each picker manages its state.
+      Pitfalls related to dialog presentation are highlighted as well as work around hacks (inspect code).
+    </p>
+
+    <paper-button id="dualButton" raised>Dual</paper-button>
+    <paper-button id="toggleButton" raised>Toggle</paper-button>
+
+    <p id="textOutput"></p>
+
+    <!--
+        modal is required or any tap events will close the iron-overlay.
+        Tracing logic in iron-overlay-behavior will not respect an event that has stopped propagation.
+        iron-overlay-behavior#_onCaptureClick doesn't check if the event has stopped propagation, only a flag.
+    -->
+    <paper-dialog id="dualDialog" modal>
+      <single-date-time class="picker"></single-date-time>
+      <div class="buttons">
+        <paper-button dialog-dismiss>Cancel</paper-button>
+        <paper-button dialog-confirm>OK</paper-button>
+      </div>
+    </paper-dialog>
+
+    <paper-dialog id="toggleDialog" modal>
+      <single-date-time-toggle class="picker" show-toggle twenty-four></single-date-time-toggle>
+      <div class="buttons">
+        <paper-button dialog-dismiss>Cancel</paper-button>
+        <paper-button dialog-confirm>OK</paper-button>
+      </div>
+    </paper-dialog>
+  </template>
+</div>
+
+<script>
+  var qs = function (selector) {
+        return document.querySelector(selector);
+      },
+      t = qs('#t');
+  t.addEventListener('dom-change', function () {
+
+    var dualDialog = qs('#dualDialog'),
+        toggleDialog = qs('#toggleDialog'),
+        millis = new Date().getTime(),
+        queryPicker = function (dialog) {
+          return dialog.querySelector('.picker');
+        },
+        tapListener = function (e) {
+          var id = e.target.getAttribute('id'),
+              showDialog = function (dialog) {
+                dialog.open();
+
+                // Hack to center the dialog. Not needed in all cases but easier to cover all cases than be conditional.
+                if (!dialog.dataset.isFit) {
+                  dialog.dataset.isFit = true;
+                  var listener = function () {
+                    dialog.async(function () {
+                      dialog.refit();
+                      dialog.removeEventListener("iron-overlay-opened", listener);
+                    }, 1);
+                  };
+                  dialog.addEventListener("iron-overlay-opened", listener);
+                }
+
+                var picker = queryPicker(dialog);
+                // Explicitly set the millis in case the other picker was used
+                picker.millis = millis;
+
+                return picker;
+              };
+
+          switch (id) {
+            case 'dualButton':
+              var picker = showDialog(dualDialog);
+              // Hack, scroll listener in picker acts unexpectedly when in dialog, on most opens, not just first
+              picker.async(function () {
+                picker.focusSelect();
+              });
+              break;
+            case 'toggleButton':
+              showDialog(toggleDialog);
+              break;
+
+            default:
+              console.debug('Unknown button', id);
+              break;
+          }
+        },
+        buttons = [qs('#dualButton'), qs('#toggleButton')];
+    for (var i = 0, L = buttons.length; i < L; i++) {
+      var button = buttons[i];
+      button.addEventListener('tap', tapListener);
+    }
+
+    var textOutput = qs('#textOutput'),
+        updateOutput = function (date) {
+          textOutput.textContent = date.toString();
+        };
+    updateOutput(new Date(millis));
+
+    var closeListener = function (e) {
+          if (e.detail.confirmed) {
+            var dialog = e.target,
+                picker = queryPicker(dialog),
+                date = picker.dateTime;
+            millis = date.getTime();
+            updateOutput(date);
+          }
+        },
+        dialogs = [dualDialog, toggleDialog];
+    dialogs.forEach(function (dialog) {
+      dialog.addEventListener('iron-overlay-closed', closeListener);
+    });
+
+  });
+</script>
+</body>
+</html>

@@ -1,14 +1,15 @@
 <script>
   /**
-   * Refactored out of single-time-pick for separation of code.
+   * Refactored out of &lt;single-time-pick&gt; for code separation.
    *
    * Position in this class are the discrete positions of a tick on a clock face.
    * Hours have 12 or 24 positions and minutes have 60 positions.
    *
-   * Underlying display data is composed of pose data describing how
-   * rendered numbers are laid out and cached images for speedy rendering.
+   * Underlying display data is pose data describing how rendered
+   * numbers are laid out and cached images for speedy rendering.
    *
-   * Highlighting is rendered to show what can be selected and selections show the last set/selected time.
+   * Selected shows the last set/selected time.
+   * Highlighting shows what can be selected.
    */
   SingleTimeDisplaySelectBehavior = {
     /**
@@ -18,8 +19,6 @@
       // Polymer polyfill lifecycle events are not consistent w/ Polymer spec, redraw if necessary
       this._redrawCanvas();
 
-      // Set selected first
-      this.displayData.hour.select = this._getHourPosition();
       this._setDisplay(this.displayData.hour);
     },
 
@@ -30,8 +29,6 @@
       // Polymer polyfill lifecycle events are not consistent w/ Polymer spec, redraw if necessary
       this._redrawCanvas();
 
-      // Set selected first
-      this.displayData.minute.select = this._getHourMinute().minute;
       this._setDisplay(this.displayData.minute);
     },
 
@@ -115,7 +112,7 @@
                 xy = getXyPosition(angle, rDelta),
                 halfWidth = width / 2,
                 center = {x: xy.x, y: xy.y},
-                // Should be pythagorean of half height and half width but will be too large on Firefox
+            // Should be pythagorean of half height and half width but will be too large on Firefox
                 textRadius = 1.2 * halfHeight;
             return {
               width: width,
@@ -183,7 +180,7 @@
     },
 
     /**
-     * @param {Event} sourceEvent properties offsetX and offsetY must exist and represent the coordinates of the action
+     * @param {{offsetX: number, offsetY: number}} sourceEvent offsetX and offsetY are the coordinates of the action
      * @param {number} positionCount number of discrete positions on this clock, defaults to 12
      * @return {{normalizeR: number, clockPosition: {number}} normalizeR is [0,1] and clockPosition is [0,positionCount)
      */
@@ -247,33 +244,44 @@
       var sourceEvent = e.detail.sourceEvent,
           isHourDisplay = this.activeDisplay == this.displayData.hour,
           polarPosition = this._getClockEventXyAngle(sourceEvent, isHourDisplay ? 12 : 60),
-          date = new Date(this.millis);
+          date = new Date(this.millis),
+          isChange = false,
+          activeDisplay = this.activeDisplay;
+
       if (isHourDisplay) {
         var hourPosition = this._getHourPositionInner(polarPosition).hourPosition;
-        if (this.activeDisplay.select != hourPosition) {
-          this.activeDisplay.select = hourPosition;
+        if (activeDisplay.select != hourPosition) {
+          activeDisplay.select = hourPosition;
           this._redraw();
-        }
 
-        var hour = parseInt(hourPosition);
-        if (!this.twentyFour) {
-          if (this._timeMeridiem == 'PM') {
-            hour += 12;
+          var hour = parseInt(hourPosition);
+          if (!this.twentyFour) {
+            if (this._timeMeridiem == 'PM') {
+              hour += 12;
+            }
           }
+          date.setHours(hour);
+          isChange = true;
         }
-        date.setHours(hour);
 
       } else {
         var minute = polarPosition.clockPosition;
-        this.activeDisplay.select = minute;
-        this._redraw();
+        if (activeDisplay.select != minute) {
+          activeDisplay.select = minute;
+          this._redraw();
 
-        date.setMinutes(minute);
+          date.setMinutes(minute);
+          isChange = true;
+        }
       }
 
-      // This should notify (fire on-millis-changed event)
-      this.millis = date.getTime();
-      this._fireTimeSelect();
+      if (isChange) {
+        // This should notify (fire on-millis-changed event)
+        this.millis = date.getTime();
+        this._fireTimeSelect();
+
+        // todo After drag select is implemented, toggle view after tap select and save an action when picking time
+      }
     },
 
     // Listener on mouse move of select UI
@@ -395,8 +403,10 @@
           };
 
       if (this.activeDisplay == this.displayData.hour) {
-        var hourPosition = this.activeDisplay.select,
-            poseData = this.activeDisplay.pose[hourPosition],
+        var hourPosition = this._getHourPosition();
+        this.displayData.hour.select = hourPosition;
+
+        var poseData = this.activeDisplay.pose[hourPosition],
             center = poseData.center;
         // Selection
         fillSelect(center.x, center.y, poseData.radius);
@@ -406,8 +416,10 @@
         context.fillText(hourPosition, poseData.x, poseData.y);
 
       } else {
-        var minute = this.activeDisplay.select,
-            minuteCircle = this._getMinuteCircle(minute);
+        var minute = this._getHourMinute().minute;
+        this.displayData.minute.select = minute;
+
+        var minuteCircle = this._getMinuteCircle(minute);
         // Selection
         fillSelect(minuteCircle.x, minuteCircle.y, minuteCircle.r);
 

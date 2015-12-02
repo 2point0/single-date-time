@@ -5,7 +5,7 @@
 <link rel="import" href="../single-date-pick.html">
 <link rel="import" href="../single-time-pick.html">
 
-<dom-module id="demo-element">
+<dom-module id="individual-element">
   <template>
     <style>
       :host {
@@ -24,7 +24,19 @@
       single-date-pick {
         width: 400px;
       }
+
+      .explanation {
+        white-space: pre-line;
+        line-height: 1.7;
+      }
+
+      p.center {
+        text-align: center;
+      }
     </style>
+
+    <p class="explanation">These picker elements are standalone in another element.
+    See the styles declaration for examples on overriding the pickers custom styles.</p>
 
     <div class="horizontal layout">
       <div>
@@ -35,8 +47,14 @@
         <p>[[timeOutput]]</p>
 
         <div class="horizontal layout">
-          <single-time-pick id="timePicker1" on-time-select="_onTimeSelect"></single-time-pick>
-          <single-time-pick on-time-select="_onTimeSelect" twenty-four></single-time-pick>
+          <div>
+            <p class="center">12 hour picker</p>
+            <single-time-pick id="timePicker1" on-time-select="_onTimeSelect"></single-time-pick>
+          </div>
+          <div>
+            <p class="center">24 hour picker</p>
+            <single-time-pick on-time-select="_onTimeSelect" twenty-four></single-time-pick>
+          </div>
         </div>
       </div>
     </div>
@@ -45,7 +63,7 @@
 
   <script>
     Polymer({
-      is: 'demo-element',
+      is: 'individual-element',
       attached: function () {
         // Assignment of millis to single-date-pick does not equate to a date select event
         this._showDate();
@@ -54,8 +72,8 @@
         timePicker.showMinute();
         this._showTime(timePicker.millis);
       },
-      _showDate: function (e, detail) {
-        var millis = this.$.datePicker.secondSelect * 1000;
+      _showDate: function () {
+        var millis = this.$.datePicker.millis;
         this.dateOutput = new Date(millis).toDateString();
       },
       _onTimeSelect: function (e, detail) {

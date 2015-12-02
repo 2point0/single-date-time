@@ -26,6 +26,9 @@
     var selectClass = 'select',
         selectSelector = '.' + selectClass;
 
+    /**
+     * Month UI laid out as a calendar page.
+     */
     Polymer({
       is: 'single-date-month',
 
@@ -35,19 +38,19 @@
          *
          * Purely for UI, does not indicate selection.
          */
-        second: {
+        millis: {
           type: Number,
           value: 0,
-          observer: '_secondChange',
+          observer: '_millisChange',
           reflectToAttribute: true
         },
 
         /**
-         * The currently selected time.
+         * The currently selected day (in millis).
          *
-         * If not in this month's time frame, deselects if currently selected.
+         * Selects a day in this month if in that day, otherwise deselects all days.
          */
-        secondSelect: {
+        millisSelect: {
           type: Number,
           value: 0,
           observer: '_selectChange',
@@ -72,12 +75,12 @@
 
       // Sets the selection if a date in this month is selected
       _updateSelect: function () {
-        var secondSelect = this.secondSelect;
-        if (!secondSelect) {
+        var millisSelect = this.millisSelect;
+        if (!millisSelect) {
           return;
         }
 
-        var m = moment.unix(secondSelect);
+        var m = moment(millisSelect);
         if (m.year() === this.year && m.month() === this.month) {
           var date = m.date(),
               firstDay = m.date(1).day(),
@@ -124,13 +127,13 @@
       },
 
       // Refreshes the UI based on the time set
-      _secondChange: function (newValue) {
-        // Invalid second, exit
+      _millisChange: function (newValue) {
+        // Invalid value, exit
         if (!newValue) {
           return;
         }
 
-        var m = moment.unix(newValue);
+        var m = moment(newValue);
 
         // Update header display
         this.month = m.month();
@@ -236,7 +239,7 @@
        * A date was selected, the time part of the timestamp is insignificant
        *
        * @event date-select
-       * @detail {{date: Number, month: Number, year: Number, unixTimestamp: Number}}
+       * @detail {{date: Number, month: Number, year: Number, millis: Number}}
        */
 
       // Fires data of the day selected
@@ -257,12 +260,11 @@
               month: this.month,
               year: this.year,
               // TODO Apply timezoneOffset, document proper use
-              unixTimestamp: moment()
+              millis: moment()
                   .year(this.year)
                   .month(this.month)
                   .date(date)
-                  .unix()
-
+                  .valueOf()
             };
 
             return true;
