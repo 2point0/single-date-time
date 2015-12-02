@@ -1,0 +1,69 @@
+<link rel="import" href="../../polymer/polymer.html">
+
+<link rel="import" href="../../iron-flex-layout/classes/iron-flex-layout.html">
+
+<link rel="import" href="../single-date-pick.html">
+<link rel="import" href="../single-time-pick.html">
+
+<dom-module id="demo-element">
+  <template>
+    <style>
+      :host {
+        display: block;
+
+        /*Override default to create bigger date picker*/
+        --month-day-border-radius: 24px;
+        --month-day-width: 48px;
+        --month-day-height: 48px;
+        --single-date-iron-list-theme: {
+           max-height: 360px;
+           max-width: 400px;
+         };
+      }
+
+      single-date-pick {
+        width: 400px;
+      }
+    </style>
+
+    <div class="horizontal layout">
+      <div>
+        <p>[[dateOutput]]</p>
+        <single-date-pick id="datePicker" on-date-select="_showDate"></single-date-pick>
+      </div>
+      <div>
+        <p>[[timeOutput]]</p>
+
+        <div class="horizontal layout">
+          <single-time-pick id="timePicker1" on-time-select="_onTimeSelect"></single-time-pick>
+          <single-time-pick on-time-select="_onTimeSelect" twenty-four></single-time-pick>
+        </div>
+      </div>
+    </div>
+
+  </template>
+
+  <script>
+    Polymer({
+      is: 'demo-element',
+      attached: function () {
+        // Assignment of millis to single-date-pick does not equate to a date select event
+        this._showDate();
+
+        var timePicker = this.$.timePicker1;
+        timePicker.showMinute();
+        this._showTime(timePicker.millis);
+      },
+      _showDate: function (e, detail) {
+        var millis = this.$.datePicker.secondSelect * 1000;
+        this.dateOutput = new Date(millis).toDateString();
+      },
+      _onTimeSelect: function (e, detail) {
+        this._showTime(detail);
+      },
+      _showTime: function (millis) {
+        this.timeOutput = new Date(millis).toTimeString();
+      }
+    });
+  </script>
+</dom-module>

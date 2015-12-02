@@ -1,0 +1,190 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="../iron-flex-layout/classes/iron-flex-layout.html">
+
+<link rel="import" href="../paper-button/paper-button.html">
+
+<link rel="import" href="SingleTimeDisplaySelectBehavior.html">
+
+<dom-module id="single-time-pick">
+  <template>
+    <style>
+      .text-display > span {
+        font-size: var(--text-display-font-size, 30px);
+        cursor: pointer;
+      }
+
+      .text-display > paper-button {
+        font-size: var(--meridiem-font-size, 24px);
+        margin-left: 16px;
+        padding: 8px;
+        min-width: 0;
+
+        @apply(--meridiem-button-theme);
+      }
+
+      img {
+        cursor: pointer;
+      }
+    </style>
+
+    <p class="text-display center-center horizontal layout">
+      <span on-tap="_selectHour">[[_hour]]</span>
+      <span>:</span>
+      <span on-tap="_selectMinute">[[_getMinuteDisplay(_minute)]]</span>
+      <paper-button on-tap="_toggleMeridiem" raised hidden$="[[twentyFour]]">[[_timeMeridiem]]</paper-button>
+    </p>
+
+    <img id="img" on-tap="_onTapClock" on-mousemove="_onMouseMoveClock" on-mouseout="_onMouseOutClock">
+  </template>
+
+  <script>
+    /**
+     * UI for picking hour and minute (time).
+     */
+    Polymer({
+      is: 'single-time-pick',
+
+      properties: {
+        /**
+         * The milliseconds (since epoch) of the time to center on.
+         *
+         * Setting this will refresh the UI and set selected.
+         *
+         * @default now
+         */
+        millis: {
+          type: Number,
+          value: function () {
+            return new Date().getTime();
+          },
+          notify: true,
+          observer: '_millisChange'
+        },
+
+        /**
+         * Set to TRUE to show 24 hour interface or FALSE to show 12 hour with AM/PM.
+         */
+        twentyFour: {
+          type: Boolean,
+          notify: true,
+          reflectToAttribute: true
+        },
+
+        /**
+         * Render properties applied to hour and minute UI selectors.
+         *
+         * font.size must be a string of the form '/\d+/px'.
+         */
+        displayProperty: {
+          type: Object,
+          value: function () {
+            return {
+              length: 300,
+              font: {
+                size: '20px',
+                family: 'serif',
+                color: '#000'
+              },
+              highlightColor: '#eee',
+              select: {
+                color: 'white',
+                backgroundColor: '#333'
+              }
+            };
+          },
+          notify: true,
+          reflectToAttribute: true
+        }
+      },
+
+      // For text display
+      _hour: -1,
+
+      // For text display
+      _minute: -1,
+
+      _timeMeridiem: '',
+
+      behaviors: [SingleTimeDisplaySelectBehavior],
+
+      /**
+       * Computed
+       *
+       * @param {number} minute
+       * @returns {string} text for minute
+       */
+      _getMinuteDisplay: function (minute) {
+        return minute < 10 ? '0' + minute : minute;
+      },
+
+      attached: function () {
+        this._redrawCanvas();
+      },
+
+      /**
+       * @return {{hour: number, minute: number}} of the last set/selected time
+       */
+      _getHourMinute: function () {
+        var date = new Date(this.millis),
+            hour = date.getHours(),
+            minute = date.getMinutes();
+        return {hour: hour, minute: minute};
+      },
+
+      // Updates text to show last selected time
+      _updateTextDisplay: function () {
+        var hm = this._getHourMinute(),
+            hour = hm.hour;
+        if (!this.twentyFour) {
+          this._timeMeridiem = hour < 12 ? 'AM' : 'PM';
+          hour = hour % 12;
+        }
+        this._hour = hour;
+        this._minute = hm.minute;
+      },
+
+      // Toggles the current time's AM/PM
+      _toggleMeridiem: function (e) {
+        e.stopPropagation();
+
+        var date = new Date(this.millis),
+            hour = date.getHours();
+        hour += (hour < 12 ? 12 : -12);
+        this._timeMeridiem = hour < 12 ? 'AM' : 'PM';
+        date.setHours(hour);
+        this.millis = date.getTime();
+
+        // Text display does not need updating since hour display doesn't change
+
+        this._fireTimeSelect();
+      },
+
+      /**
+       * @event time-select
+       * @detail {number} selected millis, only the hour and minute parts are significant
+       */
+      _fireTimeSelect: function () {
+        this.fire('time-select', this.millis);
+      },
+
+      // Presents view for hour selection
+      _selectHour: function (e) {
+        e.stopPropagation();
+        this.showHour();
+      },
+
+      // Presents view for minute selection
+      _selectMinute: function (e) {
+        e.stopPropagation();
+        this.showMinute();
+      },
+
+      // Reacts to change in millis
+      _millisChange: function () {
+        this._updateTextDisplay();
+        this._redraw();
+      }
+    });
+  </script>
+</dom-module>

@@ -61,7 +61,7 @@
 
       tr.week td > p:hover {
         background-color: #eee;
-        border-radius: 18px;
+        border-radius: var(--day-border-radius, 18px);
 
         @apply(--day-hover-theme);
       }
@@ -69,7 +69,7 @@
       tr.week td > p.select {
         background-color: #333;
         color: white;
-        border-radius: 18px;
+        border-radius: var(--day-border-radius, 18px);
 
         @apply(--day-select-theme);
       }

@@ -33,7 +33,7 @@
       is: 'single-date-pick',
       properties: {
         /**
-         * The milliseconds (since epoch) of the date to center on.
+         * The milliseconds (since epoch) of the date in view.
          *
          * Setting this will refresh the UI and set selected.
          *
@@ -55,7 +55,6 @@
         secondSelect: {
           type: Number,
           value: 0,
-          readOnly: true,
           observer: '_secondSelectChange'
         }
       },
@@ -80,8 +79,10 @@
 
       attached: function () {
         this.isAttached = true;
-        this._populateMonthList(this.millis);
         this._wireScrollUpdate();
+        this.async(function () {
+          this._populateMonthList(this.millis);
+        }.bind(this));
       },
 
       /**
@@ -93,26 +94,34 @@
          * @param {HTMLElement} list &lt;iron-list&gt;
          * @param {{prePopulate: function():number, postPopulate: function()}} populator
          */
-        var wireScrollUpdate = function (list, populator) {
-          list.addEventListener('scroll', function (e) {
-            var scrollHeight = list.scrollHeight
-            if (scrollHeight) {
-              var deltaTop = list._scrollPosition,
-                  pageHeight = list.clientHeight,
-                  scrollTop = pageHeight + deltaTop,
-                  deltaBottom = scrollHeight - scrollTop
-              if (deltaTop < pageHeight) {
-                var populateCount = populator.prePopulate();
-                // Reset position for predictable scrolling
-                list.scrollToIndex(populateCount);
-              } else if (deltaBottom < pageHeight) {
-                populator.postPopulate();
-              }
-            }
-          });
-        };
+        var monthList = this.$.monthList,
+            t = this,
+            wireScrollUpdate = function (list, populator) {
+              list.addEventListener('scroll', function () {
+                var scrollHeight = list.scrollHeight;
+                if (scrollHeight) {
+                  var deltaTop = list._scrollPosition,
+                      pageHeight = list.clientHeight,
+                      scrollTop = pageHeight + deltaTop,
+                      deltaBottom = scrollHeight - scrollTop;
 
-        wireScrollUpdate(this.$.monthList, {
+                  // Save the last month in view for retargeting
+                  if (list = monthList) {
+                    t.lastMonthListIndex = list.clientHeight ? Math.floor(deltaTop / list.clientHeight) : 0;
+                  }
+
+                  if (deltaTop < pageHeight) {
+                    var populateCount = populator.prePopulate();
+                    // Reset position for predictable scrolling
+                    list.scrollToIndex(populateCount);
+                  } else if (deltaBottom < pageHeight) {
+                    populator.postPopulate();
+                  }
+                }
+              });
+            };
+
+        wireScrollUpdate(monthList, {
           prePopulate: function () {
             var count = 6;
             for (var i = 0; i < count; i++) {
@@ -152,6 +161,12 @@
 
       // Observer method refreshing the UI and underlying data based on the set millis
       _millisChange: function (newValue) {
+        // Set selected from millis only initially, future selection must be explicitly assigned
+        if (!this.secondSelect) {
+          // secondSelect is decoupled from millis so the selected UI doesn't react to navigation changes.
+          this.secondSelect = Math.floor(newValue / 1000);
+        }
+
         if (!newValue) {
           return;
         }
@@ -174,10 +189,6 @@
         this.lastMoment = moment(m);
         this.set('_monthData', _monthData);
         this.$.monthList.scrollToIndex(halfSize);
-
-        if (!this.secondSelect) {
-          this._setSecondSelect(Math.floor(millis / 1000));
-        }
       },
 
       // Reacts to the year press event
@@ -197,9 +208,15 @@
             return true;
           }
         });
-        this.showYear = !this.showYear;
+        this.showYear = false;
 
-        var m = moment.unix(this.secondSelect).year(year);
+        var lastMonthIndex = this.lastMonthListIndex;
+        // Never scrolled, assume center month
+        if (!lastMonthIndex) {
+          lastMonthIndex = Math.floor(this._monthData.length / 2);
+        }
+        var lastMonthSecond = this._monthData[lastMonthIndex].second,
+            m = moment.unix(lastMonthSecond).year(year);
         this.millis = m.unix() * 1000;
       },
 
@@ -227,8 +244,8 @@
       // Reacts to the date selected
       _onDateSelect: function (e, detail) {
         // Do not stop propagation in case ancestor is interested
-        this._setSecondSelect(detail.unixTimestamp);
+        this.secondSelect = detail.unixTimestamp;
       }
-    })
+    });
   </script>
 </dom-module>

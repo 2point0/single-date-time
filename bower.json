@@ -19,6 +19,7 @@
   ],
   "dependencies": {
     "iron-list": "PolymerElements/iron-list#~1.0",
+    "paper-button": "PolymerElements/paper-button#~1.0",
     "moment": "~2.10",
     "polymer": "Polymer/polymer#^1.2"
   },

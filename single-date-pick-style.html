@@ -10,6 +10,13 @@
            font-size: var(--year-item-font-size, 30px);
         };
 
+        /*Custom properties do not automatically expose across components, must manually wire*/
+        --day-border-radius: var(--month-day-border-radius);
+        --day-theme: {
+          min-width: var(--month-day-width, 36px);
+          min-height: var(--month-day-height, 36px);
+         };
+
         --day-hover-theme: {
            background-color: var(--hover-color, #eee);
          };
@@ -21,10 +28,10 @@
       }
 
       iron-list {
-        max-height: 256px;
+        max-height: 300px;
         max-width: 320px;
 
-        @apply(--iron-list-theme);
+        @apply(--single-date-iron-list-theme);
       }
 
       #yearList p {

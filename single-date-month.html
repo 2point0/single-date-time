@@ -28,6 +28,7 @@
 
     Polymer({
       is: 'single-date-month',
+
       properties: {
         /**
          * The time whose month will be rendered.
@@ -124,13 +125,14 @@
 
       // Refreshes the UI based on the time set
       _secondChange: function (newValue) {
+        // Invalid second, exit
         if (!newValue) {
           return;
         }
 
         var m = moment.unix(newValue);
 
-        // Update display
+        // Update header display
         this.month = m.month();
         this.monthDisplay = m.format('MMMM');
         this.year = parseInt(m.format('YYYY'));
@@ -271,6 +273,6 @@
           this.fire('date-select', selected);
         }
       }
-    })
+    });
   </script>
 </dom-module>
