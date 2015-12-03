@@ -47,8 +47,9 @@
       tr.week td > p {
         margin: 0;
         padding: 0;
-        min-width: 36px;
-        min-height: 36px;
+        /*IE requires height (not min-height) or flex layout properties won't take*/
+        width: 36px;
+        height: 36px;
         font-size: 20px;
         display: flex;
         align-items: center;

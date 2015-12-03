@@ -21,8 +21,11 @@
       }
 
       single-date-pick {
-        /*This is dependent on the size of the element, 301px works well for default size on Chrome and Firefox*/
-        min-width: var(--min-date-picker-width, 301px);
+        /*
+         * This is dependent on the size of the element (size of day in month),
+         * 302px works well for default size on Chrome, Firefox, and IE11.
+         */
+        min-width: var(--min-date-picker-width, 302px);
       }
 
       @media all and (max-width: 600px) {
