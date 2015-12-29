@@ -7,6 +7,7 @@
   <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
   <link rel="import" href="../../paper-button/paper-button.html">
   <link rel="import" href="../../paper-dialog/paper-dialog.html">
+  <link rel="import" href="../../paper-dialog-scrollable/paper-dialog-scrollable.html">
   <link rel="import" href="../single-date-time.html">
   <link rel="import" href="../single-date-time-toggle.html">
   <style>
@@ -27,6 +28,18 @@
 
     single-date-time-toggle {
       min-width: 302px;
+    }
+
+    @media screen and (max-width: 400px) {
+      paper-dialog > * {
+        padding: 8px;
+      }
+    }
+
+    @media screen and (max-width: 360px) {
+      paper-dialog > * {
+        padding: 0;
+      }
     }
   </style>
 </head>
@@ -51,7 +64,9 @@
         iron-overlay-behavior#_onCaptureClick doesn't check if the event has stopped propagation, only a flag.
     -->
     <paper-dialog id="dualDialog" modal>
-      <single-date-time class="picker"></single-date-time>
+      <paper-dialog-scrollable>
+        <single-date-time class="picker"></single-date-time>
+      </paper-dialog-scrollable>
       <div class="buttons">
         <paper-button dialog-dismiss>Cancel</paper-button>
         <paper-button dialog-confirm>OK</paper-button>

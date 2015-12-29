@@ -189,10 +189,17 @@
         positionCount = 12;
       }
 
+      // Mobile doesn't have offset properties
       var x = sourceEvent.offsetX,
-          y = sourceEvent.offsetY,
+          y = sourceEvent.offsetY;
 
-          property = this.displayProperty,
+      if (x === undefined) {
+        var bounds = sourceEvent.target.getBoundingClientRect();
+        x = sourceEvent.clientX - bounds.left;
+        y = sourceEvent.clientY - bounds.top;
+      }
+
+      var property = this.displayProperty,
           length = property.length,
           radius = Math.floor(length / 2),
           dX = x - radius,

@@ -32,6 +32,13 @@
 
         @apply(--date-display-theme);
       }
+
+      @media screen and (max-width: 400px) {
+        /*Add margin on narrow screens*/
+        .date-time-toggle {
+          margin-left: 16px;
+        }
+      }
     </style>
 
     <div class="date-time-toggle" hidden$="[[!showToggle]]">
