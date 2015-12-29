@@ -1,0 +1,280 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="../iron-flex-layout/classes/iron-flex-layout.html">
+
+<link rel="import" href="single-date-month-style.html">
+
+<dom-module id="single-date-month">
+  <template>
+    <style include="single-date-month-style"></style>
+
+    <p class="header-display">
+      <span class="month-display">[[monthDisplay]]</span>
+      <span class="spacer"></span>
+      <span class="year-display" on-tap="_onYearPress">[[year]]</span>
+    </p>
+
+    <table id="table" on-tap="_onSelectDay">
+      <tr id="dayRow"></tr>
+    </table>
+
+  </template>
+
+  <script src="../moment/min/moment-with-locales.min.js"></script>
+
+  <script>
+    var selectClass = 'select',
+        selectSelector = '.' + selectClass;
+
+    /**
+     * Month UI laid out as a calendar page.
+     */
+    Polymer({
+      is: 'single-date-month',
+
+      properties: {
+        /**
+         * The time whose month will be rendered.
+         *
+         * Purely for UI, does not indicate selection.
+         */
+        millis: {
+          type: Number,
+          value: 0,
+          observer: '_millisChange',
+          reflectToAttribute: true
+        },
+
+        /**
+         * The currently selected day (in millis).
+         *
+         * Selects a day in this month if in that day, otherwise deselects all days.
+         */
+        millisSelect: {
+          type: Number,
+          value: 0,
+          observer: '_selectChange',
+          reflectToAttribute: true
+        }
+      },
+
+      ready: function () {
+        this._populateDayRow();
+      },
+
+      // Reacts to selection change removing selection if selected and selecting new if necessary
+      _selectChange: function (newValue) {
+        if (!newValue) {
+          return;
+        }
+
+        this._removeUiSelect();
+
+        this._updateSelect();
+      },
+
+      // Sets the selection if a date in this month is selected
+      _updateSelect: function () {
+        var millisSelect = this.millisSelect;
+        if (!millisSelect) {
+          return;
+        }
+
+        var m = moment(millisSelect);
+        if (m.year() === this.year && m.month() === this.month) {
+          var date = m.date(),
+              firstDay = m.date(1).day(),
+              position = date + firstDay,
+              row = Math.floor(position / 7),
+              column = position % 7,
+              table = this._getTable(),
+              weekRows = table.querySelectorAll('.week'),
+              days = weekRows[column ? row : row - 1].children,
+              day = days[column ? column - 1 : 6];
+          Polymer.dom(day.children[0]).classList.add(selectClass);
+        }
+      },
+
+      // Populates the day (header) row in the table
+      _populateDayRow: function () {
+        var row = Polymer.dom(this.$.dayRow),
+            m = moment(),
+            createDayHeader = function (s) {
+              var header = document.createElement('td');
+              header.textContent = s;
+              return header;
+            };
+        m.weekday(0);
+        for (var i = 0; i < 7; i++) {
+          row.appendChild(createDayHeader(m.format('dd').substr(0, 1)));
+          m.add(1, 'day');
+        }
+      },
+
+      /**
+       * @return {HTMLElement} the Polymer wrapped tbody (table) element
+       */
+      _getTable: function () {
+        return Polymer.dom(Polymer.dom(this.$.table).querySelector('tbody'));
+      },
+
+      /**
+       * @param {moment} m this is modified
+       * @return {number} the last date of the month
+       */
+      _getLastMonthDate: function (m) {
+        return m.date(1).add(1, 'month').subtract(1, 'day').date();
+      },
+
+      // Refreshes the UI based on the time set
+      _millisChange: function (newValue) {
+        // Invalid value, exit
+        if (!newValue) {
+          return;
+        }
+
+        var m = moment(newValue);
+
+        // Update header display
+        this.month = m.month();
+        this.monthDisplay = m.format('MMMM');
+        this.year = parseInt(m.format('YYYY'));
+
+        // Clear existing weeks (is easier than reusing)
+        var dayRow = Polymer.dom(this.$.dayRow),
+            rowParent = Polymer.dom(dayRow.parentNode);
+        while (dayRow.nextSibling) {
+          rowParent.removeChild(dayRow.nextSibling);
+        }
+
+        var table = this._getTable(),
+            createWeekRow = function () {
+              var row = document.createElement('tr');
+              row.classList.add('week');
+              table.appendChild(row);
+              return Polymer.dom(row);
+            },
+            createWeekDay = function (d) {
+              var td = document.createElement('td');
+              if (d) {
+                var contentElement = document.createElement('p'),
+                    textElement = document.createElement('span');
+                textElement.textContent = d;
+                contentElement.dataset.date = d;
+                contentElement.appendChild(textElement);
+                td.appendChild(contentElement);
+              }
+              return td;
+            },
+            weekDay = m.date(1).weekday(),
+            weekRow = createWeekRow();
+
+        // Create empty days before first day
+        for (var i = 0; i < weekDay; i++) {
+          weekRow.appendChild(createWeekDay());
+        }
+
+        // Create days of month
+        var lastDate = this._getLastMonthDate(m);
+        for (i = 1; i <= lastDate; i++) {
+          weekRow.appendChild(createWeekDay(i));
+          if (weekRow.children.length == 7) {
+            weekRow = i < lastDate ? createWeekRow() : null;
+          }
+        }
+
+        // Fill last week if partially defined
+        if (weekRow) {
+          for (i = weekRow.children.length; i <= 7; i++) {
+            weekRow.appendChild(createWeekDay());
+          }
+        }
+
+        // Update selection as necessary
+        this._updateSelect();
+      },
+
+      /**
+       * A year (label) was pressed
+       *
+       * @event year-press
+       * @detail {Number} the year (YYYY) that was pressed
+       */
+
+      // Fires the year-press event
+      _onYearPress: function (e) {
+        e.stopPropagation();
+        this.fire('year-press', this.year);
+      },
+
+      /**
+       * @return {boolean} TRUE if any of the nodes are currently selected or FALSE otherwise
+       */
+      _hasSelect: function (nodes) {
+        var has = false;
+        nodes.some(function (node) {
+          if (node.classList.contains(selectClass)) {
+            has = true;
+            return true;
+          }
+        });
+        return has;
+      },
+
+      /**
+       * Removes the selection on a day if one exists
+       *
+       * @return {boolean} TRUE if a selection was removed or FALSE otherwise
+       */
+      _removeUiSelect: function () {
+        var selectedNode = this._getTable().querySelector(selectSelector);
+        if (selectedNode) {
+          selectedNode.classList.remove(selectClass);
+          return true;
+        }
+        return false;
+      },
+
+      /**
+       * A date was selected, the time part of the timestamp is insignificant
+       *
+       * @event date-select
+       * @detail {{date: Number, month: Number, year: Number, millis: Number}}
+       */
+
+      // Fires data of the day selected
+      _onSelectDay: function (e) {
+        var nodes = [e.target, e.target.parentNode];
+        if (this._hasSelect(nodes)) {
+          return;
+        }
+
+        var selected = null;
+        nodes.some(function (node) {
+          if (node.dataset.date !== undefined) {
+            e.stopPropagation();
+
+            var date = parseInt(node.dataset.date);
+            selected = {
+              date: date,
+              month: this.month,
+              year: this.year,
+              // TODO Apply timezoneOffset, document proper use
+              millis: moment()
+                  .year(this.year)
+                  .month(this.month)
+                  .date(date)
+                  .valueOf()
+            };
+
+            return true;
+          }
+        }.bind(this));
+
+        if (selected) {
+          this.fire('date-select', selected);
+        }
+      }
+    });
+  </script>
+</dom-module>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <title>single-date-time Demo</title>
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="../single-date-time.html">
+  <style>
+    .container {
+      margin: 0 auto;
+      max-width: 1200px;
+      height: 100%;
+    }
+
+    ul {
+      margin: 0;
+      padding: 0;
+      list-style-type: none;
+    }
+
+    .explanation {
+      white-space: pre-line;
+      line-height: 1.7;
+    }
+
+    #textOutput {
+      text-align: center;
+    }
+  </style>
+</head>
+<body unresolved>
+<div class="container">
+  <ul>
+    <li><a href="./dialog.html">Dialog</a></li>
+    <li><a href="./toggle.html">Toggle</a></li>
+    <li><a href="./individual.html">Standalone pickers</a></li>
+  </ul>
+
+  <p class="explanation">This is a single element presenting both pickers.
+    Click on the date picker header to focus on the date in the calendar (after scrolling away).
+    Click on the time picker hour or minute to toggle the selector.
+    This element responsive and will stack the pickers on a skinny screen.
+  </p>
+
+  <p id="textOutput"></p>
+
+  <template id="t" is="dom-bind">
+    <single-date-time></single-date-time>
+  </template>
+</div>
+
+<script>
+  var qs = function (selector) {
+        return document.querySelector(selector);
+      },
+      textOutput = qs('#textOutput');
+  qs('#t').addEventListener('dom-change', function () {
+    var picker = qs('single-date-time'),
+        eventName = ['date-select', 'time-select'],
+        updateTextOutput = function () {
+          // This is bad practice (always output to logs) but this is an example so is permissible
+          textOutput.textContent = picker.dateTime;
+        },
+        listener = function () {
+          updateTextOutput();
+        };
+
+    eventName.forEach(function (name) {
+      picker.addEventListener(name, listener);
+    });
+
+    updateTextOutput();
+  });
+</script>
+</body>
+</html>

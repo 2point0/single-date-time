@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <title>single-date-time Demo</title>
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="../single-date-time-toggle.html">
+  <style>
+    .container {
+      margin: 0 auto;
+      max-width: 1200px;
+      height: 100%;
+    }
+
+    .container > *:not(:first-child) {
+      margin-left: 16px;
+    }
+
+    single-date-time-toggle {
+      min-width: 302px;
+    }
+  </style>
+</head>
+<body unresolved>
+<div class="container horizontal layout">
+  <div>
+    <p clas="explanation">Toggle enabled</p>
+    <single-date-time-toggle show-toggle show-date></single-date-time-toggle>
+  </div>
+  <div>
+    <p clas="explanation">Time select only</p>
+    <single-date-time-toggle twenty-four></single-date-time-toggle>
+  </div>
+  <div>
+    <p clas="explanation">Date select only</p>
+    <single-date-time-toggle millis="1753412134233" show-date></single-date-time-toggle>
+  </div>
+</div>
+</body>
+</html>

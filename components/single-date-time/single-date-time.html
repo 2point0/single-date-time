@@ -1,0 +1,69 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="single-date-pick.html">
+<link rel="import" href="single-time-pick.html">
+<link rel="import" href="SingleDateTimeBehavior.html">
+
+<dom-module id="single-date-time">
+  <template>
+    <style>
+      :host {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .date-container > p {
+        text-align: center;
+        font-size: var(--date-text-font-size, 20px);
+        cursor: pointer;
+        @apply(--date-display-theme);
+      }
+
+      single-date-pick {
+        /*
+         * This is dependent on the size of the element (size of day in month),
+         * 302px works well for default size on Chrome, Firefox, and IE11.
+         */
+        min-width: var(--min-date-picker-width, 302px);
+      }
+
+      @media all and (max-width: 600px) {
+        :host > *:not(:first-child) {
+          margin-top: var(--picker-spacing, 16px);
+        }
+      }
+
+      @media all and (min-width: 601px) {
+        :host {
+          flex-direction: row;
+          justify-content: center;
+        }
+
+        :host > *:not(:first-child) {
+          margin-left: var(--picker-spacing, 16px);
+        }
+      }
+    </style>
+
+    <div class="date-container">
+      <p on-tap="_focusDate">[[dateText]]</p>
+      <single-date-pick id="datePicker" millis="[[millis]]" on-date-select="_onDateSelect"></single-date-pick>
+    </div>
+    <single-time-pick id="timePicker"
+                      millis="[[millis]]"
+                      on-time-select="_onTimeSelect"
+                      twenty-four$="[[twentyFour]]"></single-time-pick>
+  </template>
+
+  <script>
+    /**
+     * Date and time picker.
+     */
+    Polymer({
+      is: 'single-date-time',
+
+      behaviors: [SingleDateTimeBehavior]
+    });
+  </script>
+</dom-module>

@@ -1,0 +1,119 @@
+<script src="../moment/min/moment-with-locales.min.js"></script>
+
+<script>
+  /**
+   * Common methods for elements displaying both single date and time pickers.
+   *
+   * IDs of picker elements must be datePicker and timePicker,
+   * These pickers should be 1 way bound to the millis property.
+   * Date picker should forward date select event to _onDateSelect and the time select event to _onTimeSelect.
+   *
+   * timePicker should bind to the twentyFour property also.
+   *
+   * The date display element should bind its text value to dateText
+   */
+  SingleDateTimeBehavior = {
+    properties: {
+      millis: {
+        type: Number,
+        value: function () {
+          return new Date().getTime();
+        },
+        notify: true,
+        observer: '_millisChange'
+      },
+
+      twentyFour: {
+        type: Boolean,
+        reflectToAttribute: true
+      },
+
+      momentDateFormatString: {
+        type: String,
+        value: 'MMM D YYYY',
+        reflectToAttribute: true
+      },
+
+      dateText: {
+        type: String,
+        readOnly: true
+      }
+    },
+
+    attached: function () {
+      this._updateDateText(this.millis);
+    },
+
+    /**
+     * @returns {Date} the date and time currently selected on the date and time pickers.
+     * Seconds and milliseconds are insignificant.
+     */
+    get dateTime() {
+      var dateMillis = this.$.datePicker.millis,
+          timeMillis = this.$.timePicker.millis,
+          tDate = new Date(timeMillis),
+          date = new Date(dateMillis);
+      // Only hours and minutes are significant from time picker
+      date.setHours(tDate.getHours(), tDate.getMinutes());
+      return date;
+    },
+
+    // Forwards to date picker to focus on selected day
+    focusSelect: function () {
+      this.$.datePicker.focusSelect();
+    },
+
+    // Reacts to millis change
+    _millisChange: function (newValue) {
+      this._updateDateText(newValue);
+    },
+
+    // Focuses date picker on selected
+    _focusDate: function (e) {
+      e.stopPropagation();
+      this.focusSelect();
+    },
+
+    // Updates date text display
+    _updateDateText: function (millis) {
+      if (!(this.momentDateFormatString && millis)) {
+        return;
+      }
+      this._setDateText(moment(millis).format(this.momentDateFormatString));
+    },
+
+    // Reacts to date selected
+    _onDateSelect: function (e, detail) {
+      // Update this element's millis to account for the date change and keep state in sync
+      var millis = this.$.timePicker.millis,
+          date = new Date(millis);
+      date.setYear(detail.year);
+      date.setMonth(detail.month);
+      date.setDate(detail.date);
+      this.millis = date.getTime();
+
+      this._fireChange();
+    },
+
+    // Reacts to time selected
+    _onTimeSelect: function (e, detail) {
+      // Update this element's millis to account for the time change and keep state in sync
+      var millis = this.$.datePicker.millis,
+          date = new Date(millis),
+          timeDate = new Date(detail);
+      date.setHours(timeDate.getHours());
+      date.setMinutes(timeDate.getMinutes());
+      this.millis = date.getTime();
+
+      this._fireChange();
+    },
+
+    /**
+     * @event change
+     */
+
+    _fireChange: function () {
+      this.fire('change', this.millis);
+    }
+  };
+</script>

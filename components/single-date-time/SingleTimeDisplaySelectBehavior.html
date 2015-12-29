@@ -1,0 +1,445 @@
+<script>
+  /**
+   * Refactored out of &lt;single-time-pick&gt; for code separation.
+   *
+   * Position in this class are the discrete positions of a tick on a clock face.
+   * Hours have 12 or 24 positions and minutes have 60 positions.
+   *
+   * Underlying display data is pose data describing how rendered
+   * numbers are laid out and cached images for speedy rendering.
+   *
+   * Selected shows the last set/selected time.
+   * Highlighting shows what can be selected.
+   */
+  SingleTimeDisplaySelectBehavior = {
+    /**
+     * Shows the hour selector
+     */
+    showHour: function () {
+      // Polymer polyfill lifecycle events are not consistent w/ Polymer spec, redraw if necessary
+      this._redrawCanvas();
+
+      this._setDisplay(this.displayData.hour);
+    },
+
+    /**
+     * Shows the minute selector
+     */
+    showMinute: function () {
+      // Polymer polyfill lifecycle events are not consistent w/ Polymer spec, redraw if necessary
+      this._redrawCanvas();
+
+      this._setDisplay(this.displayData.minute);
+    },
+
+    // Sets (and displays) a selector
+    _setDisplay: function (displayData) {
+      if (this.activeDisplay != displayData) {
+        this.activeDisplay = displayData;
+        this.activeDisplay.highlight = '';
+        this.$.img.src = displayData.image.src;
+        this._redraw();
+      }
+    },
+
+    /**
+     * @return {string} the hour position corresponding to the hour of the last set/selected time
+     */
+    _getHourPosition: function () {
+      var hour = this._getHourMinute().hour;
+      if (this.twentyFour) {
+        return hour ? hour + '' : '00';
+      }
+      hour = hour % 12;
+      return hour ? hour + '' : '12';
+    },
+
+    // canvas for rendering
+    _getCanvas: function () {
+      if (!this.canvas) {
+        this.canvas = document.createElement('canvas');
+      }
+      return this.canvas;
+    },
+
+    // Builds display data for rendering and renders
+    _redrawCanvas: function () {
+      var property = this.displayProperty,
+          length = property.length
+
+      // Due to lifecycle inconsistency between browsers making multiple calls, redraw only if dimension has changed
+      if (this.lastDrawLength == length) {
+        return;
+      }
+      this.lastDrawLength = length;
+
+      var radius = Math.floor(length / 2),
+          center = {x: radius, y: radius},
+          canvas = this._getCanvas(),
+          context = canvas.getContext('2d');
+
+      // todo Test this clears the canvas
+      canvas.width = length;
+      canvas.height = length;
+
+      var fontProperty = property.font;
+      context.font = fontProperty.size + " " + fontProperty.family;
+      context.fillStyle = fontProperty.color;
+
+      // Determine display parameters
+      var hrPose = {},
+          minPose = {},
+          textHeight = parseInt(fontProperty.size),
+          halfHeight = textHeight / 2,
+          halfHeightSquared = halfHeight * halfHeight,
+      /*
+       * Place outer ring a full 1.5 * height from the edge.
+       * Keeps highlight/select from getting cropped by image boundary.
+       * Width should never exceeds height or highlight/select may look ugly.
+       */
+          radial = radius - 1.5 * textHeight,
+          piOver6 = Math.PI / 6,
+      // Start at 12 o'clock
+          rad = Math.PI / 2,
+          getXyPosition = function (angle, rDelta) {
+            var adjustedR = radial - (rDelta ? rDelta : 0),
+                rX = adjustedR * Math.cos(angle),
+                rY = adjustedR * Math.sin(angle);
+            return {x: center.x + rX, y: center.y - rY};
+          },
+          getPose = function (s, angle, rDelta) {
+            var width = context.measureText(s).width,
+                xy = getXyPosition(angle, rDelta),
+                halfWidth = width / 2,
+                center = {x: xy.x, y: xy.y},
+            // Should be pythagorean of half height and half width but will be too large on Firefox
+                textRadius = 1.2 * halfHeight;
+            return {
+              width: width,
+              height: textHeight,
+              x: xy.x - halfWidth,
+              y: xy.y + halfHeight,
+              center: center,
+              // Multiply by 2 for larger selection
+              radius: textRadius * (rDelta ? 0.9 : 1) * 2
+            };
+          };
+      for (var i = 0, L = 12; i < L; i++) {
+        var hrText = (i ? i : 12) + '';
+        hrPose[hrText] = getPose(hrText, rad);
+
+        if (this.twentyFour) {
+          hrText = i ? i + 12 + '' : '00';
+          hrPose[hrText] = getPose(hrText, rad, 2 * textHeight);
+        }
+
+        var minText = (i * 5) + '';
+        minPose[minText] = getPose(minText, rad);
+
+        // Clockwise rotation
+        rad -= piOver6;
+      }
+
+      // Save minute highlighting and selection display parameters
+      var minuteRadius = textHeight;
+      this.minutePose = {
+        center: center,
+        radius: minuteRadius,
+        // There is no math behind this, just trial and error
+        radial: radius - 1.45 * minuteRadius
+      };
+
+      // Create selector images
+      var renderImage = function (data) {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            for (var key in data) {
+              var pose = data[key];
+              context.fillText(key, pose.x, pose.y);
+            }
+            var image = new Image();
+            image.src = canvas.toDataURL();
+            return image;
+          },
+          hrImage = renderImage(hrPose),
+          minImage = renderImage(minPose);
+
+      context.fillStyle = this.displayProperty.select.color;
+      // Not creating hrImageSelect because hours should be spaced sufficiently and not need advanced rendering
+      var minImageSelect = renderImage(minPose);
+
+      // Cache data for display
+      this.displayData = {
+        hour: {pose: hrPose, image: hrImage},
+        minute: {pose: minPose, image: minImage, imageSelect: minImageSelect}
+      };
+
+      // Default to hour display
+      if (!this.activeDisplay) {
+        this.showHour();
+      }
+    },
+
+    /**
+     * @param {{offsetX: number, offsetY: number}} sourceEvent offsetX and offsetY are the coordinates of the action
+     * @param {number} positionCount number of discrete positions on this clock, defaults to 12
+     * @return {{normalizeR: number, clockPosition: {number}} normalizeR is [0,1] and clockPosition is [0,positionCount)
+     */
+    _getClockEventXyAngle: function (sourceEvent, positionCount) {
+      if (!positionCount) {
+        positionCount = 12;
+      }
+
+      // Mobile doesn't have offset properties
+      var x = sourceEvent.offsetX,
+          y = sourceEvent.offsetY;
+
+      if (x === undefined) {
+        var bounds = sourceEvent.target.getBoundingClientRect();
+        x = sourceEvent.clientX - bounds.left;
+        y = sourceEvent.clientY - bounds.top;
+      }
+
+      var property = this.displayProperty,
+          length = property.length,
+          radius = Math.floor(length / 2),
+          dX = x - radius,
+          dY = radius - y,
+          dR = Math.sqrt(dX * dX + dY * dY),
+          normalizeR = dR / radius,
+          angle = Math.atan2(dX, dY),
+          clockPosition = Math.round(angle / Math.PI * positionCount / 2);
+      if (clockPosition < 0) {
+        clockPosition += positionCount;
+      }
+
+      return {normalizeR: normalizeR, clockPosition: clockPosition}
+    },
+
+    /**
+     * @param {{normalizeR: number, clockPosition: number}} polarPosition
+     * @return {{hourPosition: string, isInner: boolean}} Translates the polar position to an hour position.
+     * isInner can be ignored if the selector does not have an inner selection.
+     */
+    _getHourPositionInner: function (polarPosition) {
+      var isInner = false,
+          hour = polarPosition.clockPosition;
+      if (this.twentyFour) {
+        if (polarPosition.normalizeR < 0.75) {
+          isInner = true;
+        }
+      }
+
+      if (isInner) {
+        // Zero key is double 0
+        if (!hour) {
+          hour = '00';
+        } else {
+          hour += 12;
+        }
+      } else {
+        // Zero position is 12 o'clock
+        if (!hour) {
+          hour = 12;
+        }
+      }
+
+      return {hourPosition: hour + '', isInner: isInner};
+    },
+
+    // Listener on tap of select UI
+    _onTapClock: function (e) {
+      var sourceEvent = e.detail.sourceEvent,
+          isHourDisplay = this.activeDisplay == this.displayData.hour,
+          polarPosition = this._getClockEventXyAngle(sourceEvent, isHourDisplay ? 12 : 60),
+          date = new Date(this.millis),
+          isChange = false,
+          activeDisplay = this.activeDisplay;
+
+      if (isHourDisplay) {
+        var hourPosition = this._getHourPositionInner(polarPosition).hourPosition;
+        if (activeDisplay.select != hourPosition) {
+          activeDisplay.select = hourPosition;
+          this._redraw();
+
+          var hour = parseInt(hourPosition);
+          if (!this.twentyFour) {
+            if (this._timeMeridiem == 'PM') {
+              hour += 12;
+            }
+          }
+          date.setHours(hour);
+          isChange = true;
+        }
+
+      } else {
+        var minute = polarPosition.clockPosition;
+        if (activeDisplay.select != minute) {
+          activeDisplay.select = minute;
+          this._redraw();
+
+          date.setMinutes(minute);
+          isChange = true;
+        }
+      }
+
+      if (isChange) {
+        // This should notify (fire on-millis-changed event)
+        this.millis = date.getTime();
+        this._fireTimeSelect();
+
+        // todo After drag select is implemented, toggle view after tap select and save an action when picking time
+      }
+    },
+
+    // Listener on mouse move of select UI
+    _onMouseMoveClock: function (e) {
+      if (this.activeDisplay == this.displayData.hour) {
+        this._highlightHour(this._getClockEventXyAngle(e));
+      } else {
+        this._highlightMinute(this._getClockEventXyAngle(e, 60))
+      }
+    },
+
+    // Highlights the hour position specified by polarPosition
+    _highlightHour: function (polarPosition) {
+      var positionData = this._getHourPositionInner(polarPosition),
+          hourPosition = positionData.hourPosition;
+      if (this.activeDisplay.highlight != hourPosition) {
+        this.activeDisplay.highlight = hourPosition;
+        var poseData = this.activeDisplay.pose[hourPosition],
+            circleData = null;
+        // Highlight is not necessary if the hour is selected
+        if (hourPosition != this.activeDisplay.select) {
+          var center = poseData.center;
+          circleData = {x: center.x, y: center.y, r: poseData.radius};
+        }
+        this._drawHighlightCircle(circleData);
+      }
+    },
+
+    /**
+     * @param {number} minutePosition
+     * @returns {{x: number, y: number, r: number}} data defining a circle around the minute position
+     */
+    _getMinuteCircle: function (minutePosition) {
+      var angle = minutePosition / 60 * 2 * Math.PI,
+          minuteAngle = 2.5 * Math.PI - angle,
+          pose = this.minutePose,
+          center = pose.center,
+          radial = pose.radial;
+      return {
+        x: center.x + radial * Math.cos(minuteAngle),
+        y: center.y - radial * Math.sin(minuteAngle),
+        r: pose.radius
+      };
+    },
+
+    // Highlights the minute position specified by polarPosition
+    _highlightMinute: function (polarPosition) {
+      var minPosition = polarPosition.clockPosition;
+      if (this.activeDisplay.highlight != minPosition) {
+        this.activeDisplay.highlight = minPosition;
+        var circleData = minPosition == this.activeDisplay.select ? null : this._getMinuteCircle(minPosition);
+        this._drawHighlightCircle(circleData)
+      }
+    },
+
+    // Listener on mouse out of select UI
+    _onMouseOutClock: function (e) {
+      this.activeDisplay.highlight = '';
+      this._redraw();
+    },
+
+    // Renders a highlight with the circle data
+    _drawHighlightCircle: function (circleData) {
+      this._redraw(circleData);
+    },
+
+    /**
+     * Renders the image with no decoration
+     *
+     * @return {{canvas: Canvas, context: CanvasContext}} for additional rendering
+     */
+    _drawImage: function (img) {
+      var canvas = this._getCanvas(),
+          context = canvas.getContext('2d');
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(img, 0, 0);
+
+      return {canvas: canvas, context: context};
+    },
+
+    // Renders the selector UI with highlights and selection if defined
+    _redraw: function (highlightCircle) {
+      // Exit if state is not set
+      if (!this.activeDisplay) {
+        return;
+      }
+
+      var img = this.activeDisplay.image,
+          cc = this._drawImage(img),
+          canvas = cc.canvas,
+          context = cc.context;
+
+      if (highlightCircle) {
+        context.save();
+
+        // Highlight
+        context.beginPath();
+        context.arc(highlightCircle.x, highlightCircle.y, highlightCircle.r, 0, 2 * Math.PI);
+        context.fillStyle = this.displayProperty.highlightColor;
+        context.fill();
+
+        // Clip and redraw image over highlight
+        context.beginPath();
+        context.arc(highlightCircle.x, highlightCircle.y, highlightCircle.r, 0, 2 * Math.PI);
+        context.clip();
+        context.drawImage(img, 0, 0);
+
+        context.restore();
+      }
+
+      context.save();
+
+      var selectProperty = this.displayProperty.select,
+          fillSelect = function (x, y, radius) {
+            context.beginPath();
+            context.arc(x, y, radius, 0, 2 * Math.PI);
+            context.fillStyle = selectProperty.backgroundColor;
+            context.fill();
+          };
+
+      if (this.activeDisplay == this.displayData.hour) {
+        var hourPosition = this._getHourPosition();
+        this.displayData.hour.select = hourPosition;
+
+        var poseData = this.activeDisplay.pose[hourPosition],
+            center = poseData.center;
+        // Selection
+        fillSelect(center.x, center.y, poseData.radius);
+
+        // Number
+        context.fillStyle = selectProperty.color;
+        context.fillText(hourPosition, poseData.x, poseData.y);
+
+      } else {
+        var minute = this._getHourMinute().minute;
+        this.displayData.minute.select = minute;
+
+        var minuteCircle = this._getMinuteCircle(minute);
+        // Selection
+        fillSelect(minuteCircle.x, minuteCircle.y, minuteCircle.r);
+
+        // Numbers
+        context.beginPath();
+        context.arc(minuteCircle.x, minuteCircle.y, minuteCircle.r, 0, 2 * Math.PI);
+        context.clip();
+        context.drawImage(this.displayData.minute.imageSelect, 0, 0);
+      }
+
+      context.restore();
+
+      this.$.img.src = canvas.toDataURL();
+    }
+  };
+</script>
